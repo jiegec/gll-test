@@ -21,56 +21,59 @@ enum Label {
     LB,
 }
 
-type GSSNode = (Label, usize);
+type GSSNode<L> = (L, usize);
 
 #[derive(Debug)]
-struct GSSState {
-    graph: Graph<GSSNode, (), Directed>,
-    nodes: BTreeMap<GSSNode, NodeIndex>,
-    visited: Vec<BTreeSet<(Label, NodeIndex)>>,
-    todo: VecDeque<(Label, NodeIndex, usize)>,
+struct GSSState<L: Ord + Clone> {
+    graph: Graph<GSSNode<L>, (), Directed>,
+    nodes: BTreeMap<GSSNode<L>, NodeIndex>,
+    visited: Vec<BTreeSet<(L, NodeIndex)>>,
+    todo: VecDeque<(L, NodeIndex, usize)>,
     pop: BTreeSet<(NodeIndex, usize)>,
     accept_node_index: NodeIndex,
     current_node_index: NodeIndex,
 }
 
-fn add(l: Label, u: NodeIndex, j: usize, state: &mut GSSState) {
-    if !state.visited[j].contains(&(l, u)) {
-        state.visited[j].insert((l, u));
-        state.todo.push_back((l, u, j));
-    }
-}
-
-fn pop(u: NodeIndex, j: usize, state: &mut GSSState) {
-    if u != state.accept_node_index {
-        state.pop.insert((u, j));
-        let node = state.graph[u];
-        let neighbors: Vec<NodeIndex> = state.graph.neighbors(u).collect();
-        for v in neighbors {
-            add(node.0, v, j, state);
+impl<L: Ord + Clone> GSSState<L> {
+    fn add(&mut self, l: L, u: NodeIndex, j: usize) {
+        if !self.visited[j].contains(&(l.clone(), u)) {
+            self.visited[j].insert((l.clone(), u));
+            self.todo.push_back((l, u, j));
         }
     }
-}
 
-fn create(l: Label, u: NodeIndex, j: usize, state: &mut GSSState) {
-    let node = (l, j);
-    let v = if let Some(index) = state.nodes.get(&node) {
-        *index
-    } else {
-        let index = state.graph.add_node(node);
-        state.nodes.insert(node, index);
-        index
-    };
-    if state.graph.find_edge(v, u).is_none() {
-        state.graph.add_edge(v, u, ());
-        let pop = state.pop.clone();
-        for (index, k) in pop.iter() {
-            if index == &v {
-                add(l, u, *k, state);
+    fn pop(&mut self, u: NodeIndex, j: usize) {
+        if u != self.accept_node_index {
+            self.pop.insert((u, j));
+            let node = self.graph[u].clone();
+            let neighbors: Vec<NodeIndex> = self.graph.neighbors(u).collect();
+            for v in neighbors {
+                self.add(node.0.clone(), v, j);
             }
         }
     }
-    state.current_node_index = v;
+
+    fn create(&mut self, l: L, u: NodeIndex, j: usize) {
+        let node = (l.clone(), j);
+        let v = if let Some(index) = self.nodes.get(&node) {
+            *index
+        } else {
+            let index = self.graph.add_node(node.clone());
+            self.nodes.insert(node, index);
+            index
+        };
+        if self.graph.find_edge(v, u).is_none() {
+            self.graph.add_edge(v, u, ());
+            let pop = self.pop.clone();
+            for (index, k) in pop.iter() {
+                if index == &v {
+                    self.add(l.clone(), u, *k);
+                }
+            }
+        }
+        self.current_node_index = v;
+    }
+
 }
 
 pub fn parse(input: &[u8]) {
@@ -78,7 +81,7 @@ pub fn parse(input: &[u8]) {
     let m = input.len() - 1;
     let mut i = 0;
 
-    let mut graph: Graph<GSSNode, (), Directed> = Graph::new();
+    let mut graph: Graph<GSSNode<Label>, (), Directed> = Graph::new();
     let mut nodes = BTreeMap::new();
     let initial_node = (L0, 0);
     let accept_node = (Accept, 0);
@@ -119,23 +122,23 @@ pub fn parse(input: &[u8]) {
                 }
                 LS => {
                     if [b'a', b'c'].contains(&input[i]) {
-                        add(LS1, state.current_node_index, i, &mut state);
+                        state.add(LS1, state.current_node_index, i);
                     }
                     if [b'a', b'c'].contains(&input[i]) {
-                        add(LS2, state.current_node_index, i, &mut state);
+                        state.add(LS2, state.current_node_index, i);
                     }
                     if true {
-                        add(LS3, state.current_node_index, i, &mut state);
+                        state.add(LS3, state.current_node_index, i);
                     }
                     current_label = L0;
                 }
                 LS1 => {
-                    create(L1, state.current_node_index, i, &mut state);
+                    state.create(L1, state.current_node_index, i);
                     current_label = LA;
                 }
                 L1 => {
                     if [b'a', b'b', b'c', b'd', b'$'].contains(&input[i]) {
-                        create(L2, state.current_node_index, i, &mut state);
+                        state.create(L2, state.current_node_index, i);
                         current_label = LB;
                     } else {
                         current_label = L0;
@@ -150,12 +153,12 @@ pub fn parse(input: &[u8]) {
                     }
                 }
                 LS2 => {
-                    create(L3, state.current_node_index, i, &mut state);
+                    state.create(L3, state.current_node_index, i);
                     current_label = LB;
                 }
                 L3 => {
                     if [b'a', b'b', b'c', b'd', b'$'].contains(&input[i]) {
-                        create(L4, state.current_node_index, i, &mut state);
+                        state.create(L4, state.current_node_index, i);
                         current_label = LS;
                     } else {
                         current_label = L0;
@@ -184,7 +187,7 @@ pub fn parse(input: &[u8]) {
                     }
                 }
                 Ret => {
-                    pop(state.current_node_index, i, &mut state);
+                    state.pop(state.current_node_index, i);
                     current_label = L0;
                 }
                 _ => {
