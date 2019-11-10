@@ -15,10 +15,15 @@ use std::str;
 #[allow(non_camel_case_types)]
 enum Label {
     Succ,
-    SS, SS_S,
+    SS,
+    SS_S,
     S,
-    S1, S1_A, S1_AS,
-    S2, S2_B, S2_BS,
+    S1,
+    S1_A,
+    S1_AS,
+    S2,
+    S2_B,
+    S2_BS,
     S3,
     A,
     B,
@@ -39,14 +44,17 @@ pub fn parse(input: &[u8]) {
     todo.push_back(Cont {
         label: SS,
         pos: 0,
-        stack
+        stack,
     });
     loop {
         if let Some(cont) = todo.pop_back() {
             println!("at {} CONT: {:?} STACK: {:?}", cont.pos, cont, cont.stack);
             match cont.label {
                 Succ => {
-                    println!("Found match! {}", str::from_utf8(&input[..cont.pos]).unwrap());
+                    println!(
+                        "Found match! {}",
+                        str::from_utf8(&input[..cont.pos]).unwrap()
+                    );
                 }
                 SS => {
                     // SS -> .S $
@@ -56,7 +64,7 @@ pub fn parse(input: &[u8]) {
                     todo.push_back(Cont {
                         label: S,
                         pos,
-                        stack
+                        stack,
                     })
                 }
                 SS_S => {
@@ -65,11 +73,7 @@ pub fn parse(input: &[u8]) {
                         let mut stack = cont.stack.clone();
                         pos += 1;
                         let label = stack.pop().unwrap();
-                        todo.push_back(Cont {
-                            label,
-                            pos,
-                            stack,
-                        });
+                        todo.push_back(Cont { label, pos, stack });
                     }
                 }
                 S => {
@@ -80,7 +84,7 @@ pub fn parse(input: &[u8]) {
                         todo.push_back(Cont {
                             label: S1,
                             pos,
-                            stack
+                            stack,
                         });
                     }
                     if input[cont.pos] == b'a' || input[cont.pos] == b'b' {
@@ -90,7 +94,7 @@ pub fn parse(input: &[u8]) {
                         todo.push_back(Cont {
                             label: S2,
                             pos,
-                            stack
+                            stack,
                         });
                     }
                     {
@@ -100,10 +104,10 @@ pub fn parse(input: &[u8]) {
                         todo.push_back(Cont {
                             label: S3,
                             pos,
-                            stack
+                            stack,
                         });
                     }
-                },
+                }
                 S1 => {
                     // S -> .A S d
                     let pos = cont.pos;
@@ -112,7 +116,7 @@ pub fn parse(input: &[u8]) {
                     todo.push_back(Cont {
                         label: A,
                         pos,
-                        stack
+                        stack,
                     })
                 }
                 S1_A => {
@@ -123,7 +127,7 @@ pub fn parse(input: &[u8]) {
                     todo.push_back(Cont {
                         label: S,
                         pos,
-                        stack
+                        stack,
                     })
                 }
                 S1_AS => {
@@ -133,11 +137,7 @@ pub fn parse(input: &[u8]) {
                         let mut stack = cont.stack.clone();
                         pos += 1;
                         let label = stack.pop().unwrap();
-                        todo.push_back(Cont {
-                            label,
-                            pos,
-                            stack,
-                        });
+                        todo.push_back(Cont { label, pos, stack });
                     }
                 }
                 S2 => {
@@ -148,7 +148,7 @@ pub fn parse(input: &[u8]) {
                     todo.push_back(Cont {
                         label: B,
                         pos,
-                        stack: stack.clone()
+                        stack: stack.clone(),
                     })
                 }
                 S3 => {
@@ -156,11 +156,7 @@ pub fn parse(input: &[u8]) {
                     let pos = cont.pos;
                     let mut stack = cont.stack.clone();
                     let label = stack.pop().unwrap();
-                    todo.push_back(Cont {
-                        label,
-                        pos,
-                        stack,
-                    });
+                    todo.push_back(Cont { label, pos, stack });
                 }
                 S2_B => {
                     // S -> B .S
@@ -170,7 +166,7 @@ pub fn parse(input: &[u8]) {
                     todo.push_back(Cont {
                         label: S,
                         pos,
-                        stack
+                        stack,
                     })
                 }
                 S2_BS => {
@@ -178,11 +174,7 @@ pub fn parse(input: &[u8]) {
                     let pos = cont.pos;
                     let mut stack = cont.stack.clone();
                     let label = stack.pop().unwrap();
-                    todo.push_back(Cont {
-                        label,
-                        pos,
-                        stack
-                    });
+                    todo.push_back(Cont { label, pos, stack });
                 }
                 A => {
                     if input[cont.pos] == b'a' {
@@ -190,11 +182,7 @@ pub fn parse(input: &[u8]) {
                         let mut stack = cont.stack.clone();
                         pos += 1;
                         let label = stack.pop().unwrap();
-                        todo.push_back(Cont {
-                            label,
-                            pos,
-                            stack,
-                        });
+                        todo.push_back(Cont { label, pos, stack });
                     }
                 }
                 B => {
@@ -203,22 +191,14 @@ pub fn parse(input: &[u8]) {
                         let mut stack = cont.stack.clone();
                         let label = stack.pop().unwrap();
                         pos += 1;
-                        todo.push_back(Cont {
-                            label,
-                            pos,
-                            stack,
-                        });
+                        todo.push_back(Cont { label, pos, stack });
                     }
                     if input[cont.pos] == b'b' {
                         let mut pos = cont.pos;
                         let mut stack = cont.stack.clone();
                         let label = stack.pop().unwrap();
                         pos += 1;
-                        todo.push_back(Cont {
-                            label,
-                            pos,
-                            stack
-                        });
+                        todo.push_back(Cont { label, pos, stack });
                     }
                 }
             }

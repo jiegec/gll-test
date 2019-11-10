@@ -1,6 +1,6 @@
-use std::collections::{BTreeSet, BTreeMap, VecDeque};
-use petgraph::{Graph, Directed, graph::NodeIndex};
 use petgraph::dot::Dot;
+use petgraph::{graph::NodeIndex, Directed, Graph};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs::File;
 use std::io::Write;
 
@@ -10,8 +10,12 @@ enum Label {
     Ret,
     L0,
     LS,
-    LS1, L1, L2,
-    LS2, L3, L4,
+    LS1,
+    L1,
+    L2,
+    LS2,
+    L3,
+    L4,
     LS3,
     LA,
     LB,
@@ -133,7 +137,9 @@ pub fn parse(input: &[u8]) {
                     if [b'a', b'b', b'c', b'd', b'$'].contains(&input[i]) {
                         create(L2, state.current_node_index, i, &mut state);
                         current_label = LB;
-                    } else { current_label = L0;}
+                    } else {
+                        current_label = L0;
+                    }
                 }
                 L2 => {
                     if input[i] == b'd' {
@@ -151,7 +157,9 @@ pub fn parse(input: &[u8]) {
                     if [b'a', b'b', b'c', b'd', b'$'].contains(&input[i]) {
                         create(L4, state.current_node_index, i, &mut state);
                         current_label = LS;
-                    } else { current_label = L0;}
+                    } else {
+                        current_label = L0;
+                    }
                 }
                 L4 => {
                     current_label = Ret;
@@ -163,13 +171,17 @@ pub fn parse(input: &[u8]) {
                     if [b'a', b'c'].contains(&input[i]) {
                         i += 1;
                         current_label = Ret;
-                    } else { current_label = L0;}
+                    } else {
+                        current_label = L0;
+                    }
                 }
                 LB => {
                     if [b'a', b'b'].contains(&input[i]) {
                         i += 1;
                         current_label = Ret;
-                    } else { current_label = L0;}
+                    } else {
+                        current_label = L0;
+                    }
                 }
                 Ret => {
                     pop(state.current_node_index, i, &mut state);
