@@ -1,4 +1,4 @@
-use gll_test::future::parse;
+use gll_test::graph::parse;
 use std::io::{self, BufRead};
 
 fn main() {

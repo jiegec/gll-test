@@ -7,18 +7,19 @@ use std::str;
 // B -> a | b
 // First(SS) = {a, b, c, eps}
 // First(S) = {a, b, c, eps}
-// Follow(S) = {$}
+// Follow(S) = {d, $}
 // First(A) = {a, c}
 // First(B) = {a, b}
 
 #[derive(Clone, Debug)]
+#[allow(non_camel_case_types)]
 enum Label {
     Succ,
     SS, SS_S,
     S,
-    S1, S1_A, S1_AS, S1_ASd,
+    S1, S1_A, S1_AS,
     S2, S2_B, S2_BS,
-    S3, S3_Eps,
+    S3,
     A,
     B,
 }
@@ -220,7 +221,6 @@ pub fn parse(input: &[u8]) {
                         });
                     }
                 }
-                _ => unimplemented!()
             }
         } else {
             break;

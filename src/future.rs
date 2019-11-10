@@ -2,11 +2,13 @@ use futures::executor::block_on;
 use futures::future::{BoxFuture, FutureExt};
 
 #[derive(Debug)]
+#[allow(non_camel_case_types)]
 enum A {
     a,
     c,
 }
 #[derive(Debug)]
+#[allow(non_camel_case_types)]
 enum B {
     a,
     b,
@@ -23,7 +25,7 @@ enum SS {
 }
 
 async fn parse_ss(input: &[u8]) -> Option<(SS, usize)> {
-    if input[0] == b'a' || input[0] == b'b' || input[0] == b'c' || input[0] == b'$' {
+    if input[0] == b'a' || input[0] == b'b' || input[0] == b'c' || input[0] == b'd' || input[0] == b'$' {
         if let Some((s, len)) = parse_s(&input[..]).await {
             if input[len] == b'$' {
                 return Some((SS::S(Box::new(s)), len));
