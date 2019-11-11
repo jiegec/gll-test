@@ -1,28 +1,6 @@
 use futures::executor::block_on;
 use futures::future::{BoxFuture, FutureExt};
-
-#[derive(Debug)]
-#[allow(non_camel_case_types)]
-enum A {
-    a,
-    c,
-}
-#[derive(Debug)]
-#[allow(non_camel_case_types)]
-enum B {
-    a,
-    b,
-}
-#[derive(Debug)]
-enum S {
-    ASd(Box<A>, Box<S>),
-    BS(Box<B>, Box<S>),
-    Eps,
-}
-#[derive(Debug)]
-enum SS {
-    S(Box<S>),
-}
+use crate::common::*;
 
 async fn parse_ss(input: &[u8]) -> Option<(SS, usize)> {
     if input[0] == b'a'
@@ -65,20 +43,20 @@ fn parse_s<'a>(input: &'a [u8]) -> BoxFuture<'a, Option<(S, usize)>> {
 
 async fn parse_a(input: &[u8]) -> Option<(A, usize)> {
     if input[0] == b'a' {
-        return Some((A::a, 1));
+        return Some((A::A, 1));
     }
     if input[0] == b'c' {
-        return Some((A::c, 1));
+        return Some((A::C, 1));
     }
     return None;
 }
 
 async fn parse_b(input: &[u8]) -> Option<(B, usize)> {
     if input[0] == b'a' {
-        return Some((B::a, 1));
+        return Some((B::A, 1));
     }
     if input[0] == b'b' {
-        return Some((B::b, 1));
+        return Some((B::B, 1));
     }
     return None;
 }

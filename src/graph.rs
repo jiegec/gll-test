@@ -1,8 +1,11 @@
 use petgraph::dot::Dot;
 use petgraph::{graph::NodeIndex, Directed, Graph};
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
 use std::io::Write;
+use rpds::Stack;
+use crate::common::*;
+use std::fmt::Debug;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 enum Label {
@@ -23,22 +26,30 @@ enum Label {
 
 type GSSNode<L> = (L, usize);
 
+#[derive(Debug, Clone)]
+struct ItemStack {
+    a: Stack<A>,
+    b: Stack<B>,
+    s: Stack<S>,
+    ss: Stack<SS>,
+}
+
 #[derive(Debug)]
 struct GSSState<L: Ord + Clone> {
     graph: Graph<GSSNode<L>, (), Directed>,
     nodes: BTreeMap<GSSNode<L>, NodeIndex>,
     visited: Vec<BTreeSet<(L, NodeIndex)>>,
-    todo: VecDeque<(L, NodeIndex, usize)>,
+    todo: Vec<(L, NodeIndex, usize)>,
     pop: BTreeSet<(NodeIndex, usize)>,
     accept_node_index: NodeIndex,
     current_node_index: NodeIndex,
 }
 
-impl<L: Ord + Clone> GSSState<L> {
+impl<L: Ord + Clone + Debug> GSSState<L> {
     fn add(&mut self, l: L, u: NodeIndex, j: usize) {
         if !self.visited[j].contains(&(l.clone(), u)) {
             self.visited[j].insert((l.clone(), u));
-            self.todo.push_back((l, u, j));
+            self.todo.push((l, u, j));
         }
     }
 
@@ -95,7 +106,7 @@ pub fn parse(input: &[u8]) {
         graph,
         nodes,
         visited: vec![BTreeSet::new(); input.len()],
-        todo: VecDeque::new(),
+        todo: Vec::new(),
         pop: BTreeSet::new(),
         accept_node_index,
         current_node_index: initial_node_index,
@@ -106,7 +117,7 @@ pub fn parse(input: &[u8]) {
         loop {
             match current_label {
                 L0 => {
-                    if let Some((l, u, j)) = state.todo.pop_front() {
+                    if let Some((l, u, j)) = state.todo.pop() {
                         current_label = l;
                         state.current_node_index = u;
                         i = j;
@@ -124,7 +135,7 @@ pub fn parse(input: &[u8]) {
                     if [b'a', b'c'].contains(&input[i]) {
                         state.add(LS1, state.current_node_index, i);
                     }
-                    if [b'a', b'c'].contains(&input[i]) {
+                    if [b'a', b'b'].contains(&input[i]) {
                         state.add(LS2, state.current_node_index, i);
                     }
                     if true {
@@ -139,7 +150,7 @@ pub fn parse(input: &[u8]) {
                 L1 => {
                     if [b'a', b'b', b'c', b'd', b'$'].contains(&input[i]) {
                         state.create(L2, state.current_node_index, i);
-                        current_label = LB;
+                        current_label = LS;
                     } else {
                         current_label = L0;
                     }
