@@ -10,6 +10,6 @@ edition = "2018"
 futures = "0.3"
 petgraph = "0.4"
 rpds = "0.7"
-gll-pg-core = { path = "../gll-pg/gll-pg-core" }
-gll-pg-macros = { path = "../gll-pg/gll-pg-macros" }
+gll-pg-core = "0.1" 
+gll-pg-macros = "0.1"
 logos = "0.9"
