@@ -14,24 +14,24 @@ enum Label {
     Ret,
     L0,
     LS,
-    LS1, // S -> . A S d
-    L1,  // S -> A . S d
-    L2,  // S -> A S . d
-    L3,  // S -> A S d .
-    LS2, // S -> . B S
-    L4,  // S -> B . S
-    L5,  // S -> B S .
-    LS3, // S -> .
+    LS_0,   // S -> . A S d
+    LS_0_1, // S -> A . S d
+    LS_0_2, // S -> A S . d
+    L3,     // S -> A S d .
+    LS_1,   // S -> . B S
+    LS_1_1, // S -> B . S
+    LS_1_2, // S -> B S .
+    LS_2,   // S -> .
     LA,
-    LA1, // A -> . a
-    L6,  // A -> a .
-    LA2, // A -> . c
-    L7,  // A -> c .
+    LA_3, // A -> . a
+    L6,   // A -> a .
+    LA_4, // A -> . c
+    L7,   // A -> c .
     LB,
-    LB1, // B -> . a
-    L8,  // B -> a .
-    LB2, // B -> . b
-    L9,  // B -> b .
+    LB_5,   // B -> . a
+    LB_5_1, // B -> a .
+    LB_6,   // B -> . b
+    L9,     // B -> b .
 }
 
 type GSSNode<L> = (L, usize);
@@ -84,7 +84,7 @@ impl GrammarLabel for Label {
     type Symbol = Symbol;
     fn first(&self) -> bool {
         use Label::*;
-        [L1, L4].contains(self)
+        [LS_0_1, LS_1_1].contains(self)
     }
 
     fn end(&self) -> Option<Symbol> {
@@ -92,11 +92,11 @@ impl GrammarLabel for Label {
         use Symbol::*;
         match self {
             L3 => Some(NS),
-            L5 => Some(NS),
-            LS3 => Some(NS),
+            LS_1_2 => Some(NS),
+            LS_2 => Some(NS),
             L6 => Some(NA),
             L7 => Some(NA),
-            L8 => Some(NB),
+            LB_5_1 => Some(NB),
             L9 => Some(NB),
             _ => None,
         }
@@ -344,11 +344,8 @@ pub fn parse(input: &[u8]) {
     // FIRST(S$)
     if [b'a', b'b', b'c', b'd', b'$'].contains(&input[0]) {
         let mut current_label = LS;
-        let mut last_label = Ret;
         loop {
-            if current_label != Ret {
-                last_label = current_label;
-            }
+            println!("{:?} {:?}", current_label, state.todo);
             match current_label {
                 L0 => {
                     if let Some((l, u, i, w)) = state.todo.pop() {
@@ -393,7 +390,7 @@ pub fn parse(input: &[u8]) {
                 LS => {
                     if [b'a', b'c'].contains(&input[state.current_position]) {
                         state.add(
-                            LS1,
+                            LS_0,
                             state.current_node_index,
                             state.current_position,
                             0, // dummy
@@ -401,7 +398,7 @@ pub fn parse(input: &[u8]) {
                     }
                     if [b'a', b'b'].contains(&input[state.current_position]) {
                         state.add(
-                            LS2,
+                            LS_1,
                             state.current_node_index,
                             state.current_position,
                             0, // dummy
@@ -409,7 +406,7 @@ pub fn parse(input: &[u8]) {
                     }
                     if true {
                         state.add(
-                            LS3,
+                            LS_2,
                             state.current_node_index,
                             state.current_position,
                             0, // dummy
@@ -417,19 +414,19 @@ pub fn parse(input: &[u8]) {
                     }
                     current_label = L0;
                 }
-                LS1 => {
+                LS_0 => {
                     state.current_node_index = state.create(
-                        L1,
+                        LS_0_1,
                         state.current_node_index,
                         state.current_position,
                         state.current_sppf_node,
                     );
                     current_label = LA;
                 }
-                L1 => {
+                LS_0_1 => {
                     if [b'a', b'b', b'c', b'd', b'$'].contains(&input[state.current_position]) {
                         state.current_node_index = state.create(
-                            L2,
+                            LS_0_2,
                             state.current_node_index,
                             state.current_position,
                             state.current_sppf_node,
@@ -439,7 +436,7 @@ pub fn parse(input: &[u8]) {
                         current_label = L0;
                     }
                 }
-                L2 => {
+                LS_0_2 => {
                     if input[state.current_position] == b'd' {
                         let right = state.get_node_t(Symbol::TD, state.current_position);
                         state.current_position += 1;
@@ -450,19 +447,19 @@ pub fn parse(input: &[u8]) {
                         current_label = L0;
                     }
                 }
-                LS2 => {
+                LS_1 => {
                     state.current_node_index = state.create(
-                        L4,
+                        LS_1_1,
                         state.current_node_index,
                         state.current_position,
                         state.current_sppf_node,
                     );
                     current_label = LB;
                 }
-                L4 => {
+                LS_1_1 => {
                     if [b'a', b'b', b'c', b'd', b'$'].contains(&input[state.current_position]) {
                         state.current_node_index = state.create(
-                            L5,
+                            LS_1_2,
                             state.current_node_index,
                             state.current_position,
                             state.current_sppf_node,
@@ -472,19 +469,19 @@ pub fn parse(input: &[u8]) {
                         current_label = L0;
                     }
                 }
-                L5 => {
+                LS_1_2 => {
                     current_label = Ret;
                 }
-                LS3 => {
+                LS_2 => {
                     let right = state.get_node_t(Symbol::Eps, state.current_position);
                     state.current_sppf_node =
-                        state.get_node_p(Label::LS3, state.current_sppf_node, right);
+                        state.get_node_p(Label::LS_2, state.current_sppf_node, right);
                     current_label = Ret;
                 }
                 LA => {
                     if [b'a'].contains(&input[state.current_position]) {
                         state.add(
-                            LA1,
+                            LA_3,
                             state.current_node_index,
                             state.current_position,
                             0, // dummy
@@ -492,7 +489,7 @@ pub fn parse(input: &[u8]) {
                     }
                     if [b'c'].contains(&input[state.current_position]) {
                         state.add(
-                            LA2,
+                            LA_4,
                             state.current_node_index,
                             state.current_position,
                             0, // dummy
@@ -500,13 +497,13 @@ pub fn parse(input: &[u8]) {
                     }
                     current_label = L0
                 }
-                LA1 => {
+                LA_3 => {
                     let right = state.get_node_t(Symbol::TA, state.current_position);
                     state.current_position += 1;
                     state.current_sppf_node = state.get_node_p(L6, state.current_sppf_node, right);
                     current_label = Ret;
                 }
-                LA2 => {
+                LA_4 => {
                     let right = state.get_node_t(Symbol::TC, state.current_position);
                     state.current_position += 1;
                     state.current_sppf_node = state.get_node_p(L7, state.current_sppf_node, right);
@@ -515,7 +512,7 @@ pub fn parse(input: &[u8]) {
                 LB => {
                     if [b'a'].contains(&input[state.current_position]) {
                         state.add(
-                            LB1,
+                            LB_5,
                             state.current_node_index,
                             state.current_position,
                             0, // dummy
@@ -523,7 +520,7 @@ pub fn parse(input: &[u8]) {
                     }
                     if [b'b'].contains(&input[state.current_position]) {
                         state.add(
-                            LB2,
+                            LB_6,
                             state.current_node_index,
                             state.current_position,
                             0, // dummy
@@ -531,20 +528,20 @@ pub fn parse(input: &[u8]) {
                     }
                     current_label = L0
                 }
-                LB1 => {
+                LB_5 => {
                     let right = state.get_node_t(Symbol::TA, state.current_position);
                     state.current_position += 1;
-                    state.current_sppf_node = state.get_node_p(L8, state.current_sppf_node, right);
+                    state.current_sppf_node =
+                        state.get_node_p(LB_5_1, state.current_sppf_node, right);
                     current_label = Ret;
                 }
-                LB2 => {
+                LB_6 => {
                     let right = state.get_node_t(Symbol::TB, state.current_position);
                     state.current_position += 1;
                     state.current_sppf_node = state.get_node_p(L9, state.current_sppf_node, right);
                     current_label = Ret;
                 }
                 Ret => {
-                    println!("Ret {:?}", last_label,);
                     state.pop(
                         state.current_node_index,
                         state.current_position,
