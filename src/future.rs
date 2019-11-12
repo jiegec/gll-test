@@ -1,6 +1,6 @@
+use crate::common::*;
 use futures::executor::block_on;
 use futures::future::{BoxFuture, FutureExt};
-use crate::common::*;
 
 async fn parse_ss(input: &[u8]) -> Option<(SS, usize)> {
     if input[0] == b'a'

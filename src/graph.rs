@@ -11,7 +11,6 @@ use std::io::Write;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 enum Label {
-    Accept,
     Ret,
     L0,
     LS,
@@ -37,25 +36,6 @@ enum Label {
 
 type GSSNode<L> = (L, usize);
 
-#[derive(Debug, Clone)]
-enum S {
-    ASd(usize, usize),
-    BS(usize, usize),
-    Eps,
-}
-
-#[derive(Debug, Clone)]
-enum A {
-    A,
-    C,
-}
-
-#[derive(Debug, Clone)]
-enum B {
-    A,
-    B,
-}
-
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 enum Symbol {
     // terminals
@@ -73,23 +53,35 @@ enum Symbol {
 
 type SPPFNodeIndex = usize;
 
+trait GrammarSymbol {
+    fn is_eps(&self) -> bool;
+}
+
+impl GrammarSymbol for Symbol {
+    fn is_eps(&self) -> bool {
+        *self == Symbol::Eps
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-enum SPPFNode<L> {
+enum SPPFNode<L, S> {
     Dummy,
     // usize, usize: from, to
     // Vec<SPPFNodeIndex>: children
-    Symbol(Symbol, usize, usize, Vec<SPPFNodeIndex>),
+    Symbol(S, usize, usize, Vec<SPPFNodeIndex>),
     Intermediate(L, usize, usize, Vec<SPPFNodeIndex>),
     Packed(L, usize, Vec<SPPFNodeIndex>),
 }
 
 trait GrammarLabel {
+    type Symbol: PartialEq + GrammarSymbol;
     fn first(&self) -> bool;
     // return Some(lhs) if it is the end
-    fn end(&self) -> Option<Symbol>;
+    fn end(&self) -> Option<Self::Symbol>;
 }
 
 impl GrammarLabel for Label {
+    type Symbol = Symbol;
     fn first(&self) -> bool {
         use Label::*;
         [L1, L4].contains(self)
@@ -111,7 +103,7 @@ impl GrammarLabel for Label {
     }
 }
 
-impl<L> SPPFNode<L> {
+impl<L, S> SPPFNode<L, S> {
     fn right_extent(&self) -> usize {
         use SPPFNode::*;
         match self {
@@ -154,7 +146,7 @@ impl<L> SPPFNode<L> {
 struct GSSState<L: Ord + Clone + GrammarLabel> {
     graph: Graph<GSSNode<L>, SPPFNodeIndex, Directed>,
     nodes: BTreeMap<GSSNode<L>, NodeIndex>,
-    sppf_nodes: Vec<SPPFNode<L>>,
+    sppf_nodes: Vec<SPPFNode<L, L::Symbol>>,
     initial_node_index: NodeIndex,
     visited: Vec<BTreeSet<(L, NodeIndex, SPPFNodeIndex)>>, // U_j
     todo: Vec<(L, NodeIndex, usize, SPPFNodeIndex)>,       // R
@@ -164,7 +156,7 @@ struct GSSState<L: Ord + Clone + GrammarLabel> {
     current_sppf_node: usize,                              // C_n
 }
 
-impl<L: Ord + Clone + GrammarLabel + Debug> GSSState<L> {
+impl<L: Ord + Clone + GrammarLabel> GSSState<L> {
     fn add(&mut self, l: L, u: NodeIndex, i: usize, w: SPPFNodeIndex) {
         if !self.visited[i].contains(&(l.clone(), u, w)) {
             self.visited[i].insert((l.clone(), u, w));
@@ -177,9 +169,12 @@ impl<L: Ord + Clone + GrammarLabel + Debug> GSSState<L> {
             let (l, _k) = self.graph[u].clone();
             self.pop.insert((u, z));
             let edges: Vec<EdgeReference<SPPFNodeIndex>> = self.graph.edges(u).collect();
-            let edge_data: Vec<(NodeIndex, SPPFNodeIndex)> = edges.iter().map(|edge| (edge.target(), *edge.weight())).collect();
+            let edge_data: Vec<(NodeIndex, SPPFNodeIndex)> = edges
+                .iter()
+                .map(|edge| (edge.target(), *edge.weight()))
+                .collect();
             for (v, w) in edge_data {
-                let y = self.getNodeP(l.clone(), w, z);
+                let y = self.get_node_p(l.clone(), w, z);
                 self.add(l.clone(), v, i, y);
             }
         }
@@ -187,7 +182,6 @@ impl<L: Ord + Clone + GrammarLabel + Debug> GSSState<L> {
 
     fn create(&mut self, l: L, u: NodeIndex, j: usize, w: SPPFNodeIndex) -> NodeIndex {
         let node = (l.clone(), j);
-        println!("create {:?}", node);
         let v = if let Some(index) = self.nodes.get(&node) {
             *index
         } else {
@@ -200,7 +194,7 @@ impl<L: Ord + Clone + GrammarLabel + Debug> GSSState<L> {
             let pop = self.pop.clone();
             for (index, z) in pop.into_iter() {
                 if index == v {
-                    let y = self.getNodeP(l.clone(), w, z);
+                    let y = self.get_node_p(l.clone(), w, z);
                     let h = self.sppf_nodes[z].right_extent();
                     self.add(l.clone(), u, h, y);
                 }
@@ -209,12 +203,12 @@ impl<L: Ord + Clone + GrammarLabel + Debug> GSSState<L> {
         v
     }
 
-    fn getNodeT(&mut self, x: Symbol, i: usize) -> SPPFNodeIndex {
-        let h = if let Symbol::Eps = x { i } else { i + 1 };
+    fn get_node_t(&mut self, x: L::Symbol, i: usize) -> SPPFNodeIndex {
+        let h = if x.is_eps() { i } else { i + 1 };
         self.find_or_create_sppf_symbol(x, i, h)
     }
 
-    fn getNodeP(&mut self, l: L, w: SPPFNodeIndex, z: SPPFNodeIndex) -> SPPFNodeIndex {
+    fn get_node_p(&mut self, l: L, w: SPPFNodeIndex, z: SPPFNodeIndex) -> SPPFNodeIndex {
         if l.first() {
             return z;
         } else {
@@ -298,7 +292,7 @@ impl<L: Ord + Clone + GrammarLabel + Debug> GSSState<L> {
         }
     }
 
-    fn find_or_create_sppf_symbol(&mut self, s: Symbol, i: usize, j: usize) -> SPPFNodeIndex {
+    fn find_or_create_sppf_symbol(&mut self, s: L::Symbol, i: usize, j: usize) -> SPPFNodeIndex {
         for (index, node) in self.sppf_nodes.iter().enumerate() {
             if let SPPFNode::Symbol(node_s, node_i, node_j, _) = node {
                 if *node_s == s && *node_i == i && *node_j == j {
@@ -447,9 +441,10 @@ pub fn parse(input: &[u8]) {
                 }
                 L2 => {
                     if input[state.current_position] == b'd' {
-                        let right = state.getNodeT(Symbol::TD, state.current_position);
+                        let right = state.get_node_t(Symbol::TD, state.current_position);
                         state.current_position += 1;
-                        state.current_sppf_node = state.getNodeP(L3, state.current_sppf_node, right);
+                        state.current_sppf_node =
+                            state.get_node_p(L3, state.current_sppf_node, right);
                         current_label = Ret;
                     } else {
                         current_label = L0;
@@ -481,8 +476,9 @@ pub fn parse(input: &[u8]) {
                     current_label = Ret;
                 }
                 LS3 => {
-                    let right = state.getNodeT(Symbol::Eps, state.current_position);
-                    state.current_sppf_node = state.getNodeP(Label::LS3, state.current_sppf_node, right);
+                    let right = state.get_node_t(Symbol::Eps, state.current_position);
+                    state.current_sppf_node =
+                        state.get_node_p(Label::LS3, state.current_sppf_node, right);
                     current_label = Ret;
                 }
                 LA => {
@@ -505,15 +501,15 @@ pub fn parse(input: &[u8]) {
                     current_label = L0
                 }
                 LA1 => {
-                    let right = state.getNodeT(Symbol::TA, state.current_position);
+                    let right = state.get_node_t(Symbol::TA, state.current_position);
                     state.current_position += 1;
-                    state.current_sppf_node = state.getNodeP(L6, state.current_sppf_node, right);
+                    state.current_sppf_node = state.get_node_p(L6, state.current_sppf_node, right);
                     current_label = Ret;
                 }
                 LA2 => {
-                    let right = state.getNodeT(Symbol::TC, state.current_position);
+                    let right = state.get_node_t(Symbol::TC, state.current_position);
                     state.current_position += 1;
-                    state.current_sppf_node = state.getNodeP(L7, state.current_sppf_node, right);
+                    state.current_sppf_node = state.get_node_p(L7, state.current_sppf_node, right);
                     current_label = Ret;
                 }
                 LB => {
@@ -536,23 +532,24 @@ pub fn parse(input: &[u8]) {
                     current_label = L0
                 }
                 LB1 => {
-                    let right = state.getNodeT(Symbol::TA, state.current_position);
+                    let right = state.get_node_t(Symbol::TA, state.current_position);
                     state.current_position += 1;
-                    state.current_sppf_node = state.getNodeP(L8, state.current_sppf_node, right);
+                    state.current_sppf_node = state.get_node_p(L8, state.current_sppf_node, right);
                     current_label = Ret;
                 }
                 LB2 => {
-                    let right = state.getNodeT(Symbol::TB, state.current_position);
+                    let right = state.get_node_t(Symbol::TB, state.current_position);
                     state.current_position += 1;
-                    state.current_sppf_node = state.getNodeP(L9, state.current_sppf_node, right);
+                    state.current_sppf_node = state.get_node_p(L9, state.current_sppf_node, right);
                     current_label = Ret;
                 }
                 Ret => {
-                    println!(
-                        "Ret {:?}",
-                        last_label,
+                    println!("Ret {:?}", last_label,);
+                    state.pop(
+                        state.current_node_index,
+                        state.current_position,
+                        state.current_sppf_node,
                     );
-                    state.pop(state.current_node_index, state.current_position, state.current_sppf_node);
                     current_label = L0;
                 }
                 _ => {
